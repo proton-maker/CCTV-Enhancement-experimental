@@ -10,7 +10,7 @@ description: >-
 
 # Real-ESRGAN (CCTV)
 
-**Goal:** make CCTV footage clearer — especially **faces** and **license plates** — using local Real-ESRGAN. Prefer this skill for upscale/clarity; use [vrt-video-restoration](../vrt-video-restoration/SKILL.md) or [rvrt-video-restoration](../rvrt-video-restoration/SKILL.md) for denoise/deblur without upscaling.
+**Goal:** make CCTV footage clearer — especially **faces** and **license plates** — using local Real-ESRGAN. Prefer this skill for upscale/clarity; use [codeformer](../codeformer/SKILL.md) for generative face restore on zoomed ROI; use [vrt-video-restoration](../vrt-video-restoration/SKILL.md) or [rvrt-video-restoration](../rvrt-video-restoration/SKILL.md) for denoise/deblur without upscaling. For the full chained adaptive flow (low-light → deblur → SR → face), see [cctv-adaptive-pipeline](../cctv-adaptive-pipeline/SKILL.md).
 
 ## Repo documentation
 
@@ -20,7 +20,7 @@ description: >-
 - **Grow downward:** append new bakeoff results or tools; avoid restructuring unrelated sections.
 - **README images:** `![caption](work/bakeoff/...)` with files committed under `work/bakeoff/`. Never swap images for URL-only text. Raw URL list: `work/bakeoff/cut2/image_urls.md`. No emojis — text or shields.io badges for icons.
 - After bakeoff: `python scripts/build_bakeoff_docs.py` then update only the image blocks in README.
-- See [README.md](../../../README.md) § “Maintaining this README”.
+- See this skill § “Repo documentation” for README edit rules (not in the public README).
 
 Upstream: [paper](https://arxiv.org/abs/2107.10833), [repo](https://github.com/xinntao/Real-ESRGAN).  
 **Runtime:** portable ncnn in `tools/realesgan/` (gitignored — see [`tools/README.md`](../../../tools/README.md)). For extra models, use [Upscayl](https://github.com/upscayl/upscayl) via `scripts/bakeoff_upscayl.py`.

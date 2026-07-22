@@ -16,6 +16,7 @@ Approach/passing frames (23:15–23:17) are **excluded** — they boxed the wron
 | `crops/motor_src.png` | User reference crop |
 | `crops/box_*.png` | Full frame + green ROI box |
 | `meta.json` | Per-frame timestamps and boxes |
+| `outputs/` | Per-method restoration results |
 
 ## Frame timeline
 
@@ -24,6 +25,28 @@ Approach/passing frames (23:15–23:17) are **excluded** — they boxed the wron
 | `frame_001` | 23:17.33 | Red bike at stall |
 | `frame_002` | 23:17.67 | Rider visible |
 | `frame_003` | 23:18.00 | Target moment |
+
+## Hybrid bakeoff (CodeFormer + Real-ESRGAN)
+
+Run all CodeFormer candidates on `src/`:
+
+```bash
+python scripts/bakeoff_hybrid.py --bakeoff work/cut-motor-2308-bakeoff
+```
+
+Comparison grid (best frame for face): `work/bakeoff/cut-motor-2308/hybrid_frame_003.png`
+
+### Results (local)
+
+| Run | Faces detected | Verdict |
+|-----|----------------|---------|
+| `11-codeformer-w07-roi` | 1/3 (`frame_003`) | Restored face tile **hallucinated** — not ID-safe |
+| `12-codeformer-w05-roi` | 0/3 | No detection at w=0.5 + mobile detector |
+| `13-codeformer-yolo` (YOLOv5n) | 0/3 | No detection |
+| `14-codeformer-bg-up` | 1/3 | Background ×2 sharper via bundled Real-ESRGAN; face still generative |
+| CodeFormer on `full/` | 0/3 all detectors | Face too small — **must use ROI `src/`** |
+
+**Takeaway:** ROI zoom is required. CodeFormer invents facial detail even when it detects a face — use only as cosmetic/investigative lead. For plates and general texture, compare with Real-ESRGAN / Upscayl; for temporal noise, RVRT.
 
 ## Regenerate
 

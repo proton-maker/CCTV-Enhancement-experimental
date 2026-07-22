@@ -37,6 +37,8 @@ Sample footage (`Original/CUT/cut2.mkv`, `ch07`, `ch09`):
 
 | **upscayl-ncnn** | [upscayl/upscayl-ncnn](https://github.com/upscayl/upscayl-ncnn) | Upscayl CLI (`upscayl-bin.exe`) |
 
+| **CodeFormer** | [sczhou/CodeFormer](https://github.com/sczhou/CodeFormer) | Face restoration on zoomed ROI — `scripts/bakeoff_hybrid.py` |
+
 | **FFmpeg** | [ffmpeg.org](https://ffmpeg.org/) | Frame extract / remux |
 
 ## Bakeoff results (`cut2` — `frame_007`)
@@ -97,6 +99,54 @@ Rebuild comparison images: `python scripts/build_bakeoff_docs.py`
 
 | Forensic presets | `forensic_presets.py` | Evidence-safe (no SR); not sharp enough |
 
+## Target pipeline (chained SOTA)
+
+Single models are not enough. Each SOTA repo has a specialty. Chain them so output of one stage is input to the next — and **skip** stages when metrics say the frame does not need them.
+
+> **Status:** This is the **target** adaptive pipeline. Bakeoffs so far still fail identification; do not treat GAN/CodeFormer output as forensic evidence.
+
+### Baseline flow
+
+```mermaid
+flowchart TD
+  A[CCTV frame] --> B[1 Low-light<br/>SCI / Restormer]
+  B --> C[2 Deblur + denoise<br/>Restormer / SwinIR / RVRT]
+  C --> D[3 Upscale<br/>Real-ESRGAN x4plus]
+  D --> E{Face target?}
+  E -->|yes| F[4 Face restore<br/>CodeFormer]
+  E -->|no — plates/vehicles| G[Final]
+  F --> G
+```
+
+| Step | Job | Preferred tools | Notes |
+|------|-----|-----------------|-------|
+| 1 | Lift darkness | [SCI](https://github.com/vis-opt-group/SCI), [Restormer](https://github.com/swz30/Restormer) | Do **not** upscale dark frames first — noise scales with SR |
+| 2 | Motion blur + compression noise | Restormer, [SwinIR](https://github.com/JingyunLiang/SwinIR), [RVRT](https://github.com/JingyunLiang/RVRT) | Transformers re-solidify smeared edges |
+| 3 | Super-resolution / plates | [Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN) `x4plus` | After clean+bright only |
+| 4 | Face (optional) | [CodeFormer](https://github.com/sczhou/CodeFormer) | Zoomed ROI; skip for plate-only jobs |
+
+### Adaptive improvements (smart pipeline)
+
+```mermaid
+flowchart LR
+  A[Frame] --> M{Brightness / blur check}
+  M -->|dark| L[Low-light]
+  M -->|ok| D{Blur?}
+  L --> D
+  D -->|blurry| B[Deblur/denoise]
+  D -->|sharp| R[ROI detect]
+  B --> R
+  R --> C[Crop → SR / face]
+  C --> S[Stitch back]
+```
+
+1. **Adaptive selector** — mean luminance + Laplacian variance; skip low-light if already bright; skip deblur if already sharp.
+2. **ROI crop → enhance → stitch** — YOLO/RetinaFace locate plate/face; run DL on a small crop (saves VRAM vs full-frame 8K SR).
+3. **Multi-frame temporal fusion** — ±2 neighbor frames via RVRT / BasicVSR++ so clearer frames fill motion-blurred digits.
+4. **Face soft-mask** — Real-ESRGAN on crop background + CodeFormer on face, alpha-blend so clothes/background stay natural.
+
+Agent workflow skill: [`.cursor/skills/cctv-adaptive-pipeline/SKILL.md`](.cursor/skills/cctv-adaptive-pipeline/SKILL.md).
+
 ## Repo layout
 
 | Path | Purpose |
@@ -116,7 +166,7 @@ Rebuild comparison images: `python scripts/build_bakeoff_docs.py`
 | `work/cut2-bakeoff/` | Bakeoff data (`src/`, `outputs/`, `RESULTS.md`) — committed |
 | `work/cut-motor-2308-bakeoff/` | Motorcycle ROI bakeoff (`cut.mkv` 23:17–23:18) — committed |
 
-| `.cursor/skills/` | Agent workflows (VRT, RVRT, Real-ESRGAN) |
+| `.cursor/skills/` | Agent workflows (VRT, RVRT, Real-ESRGAN, CodeFormer, adaptive pipeline) |
 
 ## Commands
 
@@ -206,6 +256,8 @@ Focus on **readable plates/faces**, not “looks HD”.
 4. ROI hybrid: RVRT/VRT deblur + upscale only on crops
 5. OCR-based evaluation (EasyOCR / PaddleOCR)
 6. Do not present full-frame GAN upscale as forensic evidence without disclosure
+7. Adaptive brightness/blur gates (skip low-light / deblur when not needed)
+8. Soft-mask blend: Real-ESRGAN background + CodeFormer face
 
 ### Contributing
 
@@ -264,18 +316,6 @@ Focus on **readable plates/faces**, not “looks HD”.
 }
 
 ```
-
-## Maintaining this README
-
-This file is allowed to grow — add new bakeoff rows, tools, or sections **below** existing content.
-
-When updating:
-
-- **Edit only what changed** (a table row, one command block, one verdict). Do not rewrite the whole README.
-- **Append** new results as new rows or a dated subsection; avoid reshuffling unrelated sections.
-- Keep language **generic** (plates, faces, vehicles) — no private case names or one-off incident details in the public README.
-- User-facing docs stay **English only** (see `.cursor/skills/`).
-- **README images:** use committed relative paths, e.g. `![caption](work/bakeoff/cut2/file.png)`. Do not replace images with plain URLs or caption-only text. Optional raw URLs live in `work/bakeoff/cut2/image_urls.md`. No emojis — text labels or [shields.io](https://shields.io) badges if you need icons.
 
 ---
 

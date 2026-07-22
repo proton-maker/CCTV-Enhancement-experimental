@@ -23,6 +23,7 @@ Clone or download these into `tools/` on your machine. **This folder is not comm
 | **Upscayl** | `git clone --depth 1 https://github.com/upscayl/upscayl tools/upscayl` | Extra ncnn models |
 
 | **upscayl-ncnn** | [upscayl-ncnn releases](https://github.com/upscayl/upscayl-ncnn/releases) → `tools/upscayl-ncnn/` | Upscayl CLI (`upscayl-bin.exe`) |
+| **CodeFormer** | `git clone --depth 1 https://github.com/sczhou/CodeFormer tools/CodeFormer` | Face restoration on zoomed ROI (`scripts/bakeoff_hybrid.py`) |
 
 
 
@@ -60,6 +61,27 @@ pip install -r tools/RVRT/requirements.txt
 
 
 
+## CodeFormer (face restoration)
+
+```bash
+git clone --depth 1 https://github.com/sczhou/CodeFormer tools/CodeFormer
+cd tools/CodeFormer
+pip install -r requirements.txt
+python basicsr/setup.py develop
+python scripts/download_pretrained_models.py facelib
+python scripts/download_pretrained_models.py CodeFormer
+```
+
+**Python 3.13:** patch `basicsr/setup.py` `get_version()` — see `.cursor/skills/codeformer/SKILL.md`.
+
+Hybrid bakeoff:
+
+```bash
+python scripts/bakeoff_hybrid.py --bakeoff work/cut-motor-2308-bakeoff
+```
+
+
+
 ## FFmpeg
 
 
@@ -79,6 +101,8 @@ winget install Gyan.FFmpeg
 - VRT / RVRT — CC-BY-NC
 
 - Real-ESRGAN — BSD
+
+- CodeFormer — NTU S-Lab License 1.0
 
 - Upscayl / upscayl-ncnn — AGPL-3.0
 
