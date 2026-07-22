@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "method": "zip-stored-split",
+  "note": "Original CCTV file was NOT modified. Archive uses ZIP_STORED (bit-exact).",
+  "original": {
+    "name": "ch07.mp4",
+    "relative": "C:/Users/kenwi/Documents/GitHub/CCTV/Original/ch07.mp4",
+    "size": 182546432,
+    "sha256": "025a72836ed9a76bfb21dc89d8c7c147109600464829fb2b4e7670e42e6317a2"
+  },
+  "zip_sha256_before_split": "8a8ec62f98193756fbc80473e5920e87dfffa24a60e669259acd1c5cd101146f",
+  "max_mb": 95.0,
+  "parts": [
+    {
+      "name": "ch07.mp4.zip.part001",
+      "size": 99614720,
+      "sha256": "bc659d6174ef787b97b12f71d68f77196bf4c9f687b5ad4d6b45e9155e3c61f8"
+    },
+    {
+      "name": "ch07.mp4.zip.part002",
+      "size": 82931826,
+      "sha256": "a833b983edae148a631ef6640b5bf96af86c7cd80fe5fe44da8d89fffe7f32a3"
+    }
+  ]
+}

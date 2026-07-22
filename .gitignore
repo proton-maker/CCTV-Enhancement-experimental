@@ -1,0 +1,31 @@
+# Local / runtime
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# Work + restored outputs (regenerable)
+work/
+Restored/
+*.orig.mp4
+*.orig.mkv
+
+# Raw Originals that exceed GitHub ~100MB — use Original/packs/ (ZIP_STORED split)
+# Never re-encode these; pack with: python scripts/pack_original.py
+Original/ch07.mp4
+
+# Heavy third-party / models (clone locally)
+tools/VRT/
+tools/VRT/**
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.log
+
+# Secrets
+.env
+*.pem
+credentials.json
