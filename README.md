@@ -1,6 +1,6 @@
 # CCTV Enhancement (experimental)
 
-Public **testing repo** for sharpening real CCTV footage where details matter — license plates, faces, and vehicle plates.
+Public **testing repo** for sharpening real CCTV footage where details matter — license plates, faces, and vehicle outlines.
 
 > **Honest status:** No pipeline has produced a result clearly better than the originals for identification. Outputs may look smoother but often **add artifacts or hallucinate detail** — not acceptable for evidence use. This is **work in progress**, not a finished product.
 
@@ -21,7 +21,7 @@ Sample footage (`Original/CUT/cut2.mkv`, `ch07`, `ch09`):
 
 ## Tools used in testing (not in this repo)
 
-`tools/` is **gitignored**. Install locally — see `[tools/README.md](tools/README.md)`.
+`tools/` is **gitignored**. Install locally — see [tools/README.md](tools/README.md).
 
 | Tool | Upstream | Role in this project |
 
@@ -51,26 +51,16 @@ Rebuild comparison images: `python scripts/build_bakeoff_docs.py`
 
 ### Face / upper-body crop
 
-Face crop comparison — frame 007
-
-Raw URL (for forks): `https://raw.githubusercontent.com/proton-maker/CCTV-Enhancement-experimental/main/docs/bakeoff/cut2/face_comparison_frame007.png`
+![Face crop comparison — frame 007](docs/bakeoff/cut2/face_comparison_frame007.png)
 
 | Run | Verdict | Main issue |
-
 |-----|---------|------------|
-
 | **Original** | Baseline | Blur, noise; face unreadable |
-
 | **RVRT deblur (GoPro)** | Marginal | Slightly smoother; **no readable face** |
-
 | **RVRT denoise (σ=10)** | Marginal | Similar to deblur; **no ID gain** |
-
 | **Real-ESRGAN x4plus x2** | **Failed** | **Tile mosaic** (grid squares) — unusable |
-
 | **Real-ESRGAN x4plus x4** | Poor | Slight smoothing; still blurry; ~35MB/frame |
-
 | **Upscayl Ultrasharp x2** | **Best upscale** | Coherent frame; slightly sharper; **face still unreadable** |
-
 | **Upscayl Remacri / HiFi / Standard x2** | Similar | No identification gain |
 
 **Winner (upscale):** `work/cut2-bakeoff/outputs/05-upscayl-ultrasharp-s2/`  
@@ -79,23 +69,17 @@ Raw URL (for forks): `https://raw.githubusercontent.com/proton-maker/CCTV-Enhanc
 
 ### Full frame (downscaled strip)
 
-Full frame comparison — frame 007
-
-`https://raw.githubusercontent.com/proton-maker/CCTV-Enhancement-experimental/main/docs/bakeoff/cut2/fullframe_comparison_frame007.png`
+![Full frame comparison — frame 007](docs/bakeoff/cut2/fullframe_comparison_frame007.png)
 
 ### Per-crop (Real-ESRGAN)
 
 | Original | x4plus x2 | x4plus x4 |
-
 |----------|-----------|-----------|
-
-| src | x4plus s2 | x4plus s4 |
+| ![src](docs/bakeoff/cut2/face_src.png) | ![x4plus s2](docs/bakeoff/cut2/face_x4plus_s2.png) | ![x4plus s4](docs/bakeoff/cut2/face_x4plus_s4.png) |
 
 | anime x2 | animevideov3 x2 |
-
 |----------|-----------------|
-
-| anime | animevid |
+| ![anime](docs/bakeoff/cut2/face_anime_s2.png) | ![animevid](docs/bakeoff/cut2/face_animevid_s2.png) |
 
 ## What we tried (summary)
 
@@ -137,7 +121,7 @@ Full frame comparison — frame 007
 
 ### Install tools (once)
 
-See `[tools/README.md](tools/README.md)`. RVRT on Windows also needs CUDA Toolkit + MSVC — use `scripts\run_rvrt_deblur.bat`.
+See [tools/README.md](tools/README.md). RVRT on Windows also needs CUDA Toolkit + MSVC — use `scripts\run_rvrt_deblur.bat`.
 
 ### Pack Original (forensic — no re-encode)
 
@@ -284,6 +268,7 @@ When updating:
 - **Append** new results as new rows or a dated subsection; avoid reshuffling unrelated sections.
 - Keep language **generic** (plates, faces, vehicles) — no private case names or one-off incident details in the public README.
 - User-facing docs stay **English only** (see `.cursor/skills/`).
+- **README images:** use committed relative paths, e.g. `![caption](docs/bakeoff/cut2/file.png)`. Do not replace images with plain URLs or caption-only text. Optional raw URLs live in `docs/bakeoff/cut2/image_urls.md`. No emojis — text labels or [shields.io](https://shields.io) badges if you need icons.
 
 ---
 

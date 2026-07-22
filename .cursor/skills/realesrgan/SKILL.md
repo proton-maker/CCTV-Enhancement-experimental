@@ -18,6 +18,8 @@ description: >-
 - **Generic goal** in README — plates, faces, vehicles. No private case names or incident-specific narrative.
 - **Surgical edits:** change only the lines/sections that need updating (one table row, one command, one verdict). Do **not** rewrite the whole README.
 - **Grow downward:** append new bakeoff results or tools; avoid restructuring unrelated sections.
+- **README images:** `![caption](docs/bakeoff/...)` with files committed under `docs/`. Never swap images for URL-only text. Raw URL list: `docs/bakeoff/cut2/image_urls.md`. No emojis — text or shields.io badges for icons.
+- After bakeoff: `python scripts/build_bakeoff_docs.py` then update only the image blocks in README.
 - See [README.md](../../../README.md) § “Maintaining this README”.
 
 Upstream: [paper](https://arxiv.org/abs/2107.10833), [repo](https://github.com/xinntao/Real-ESRGAN).  
