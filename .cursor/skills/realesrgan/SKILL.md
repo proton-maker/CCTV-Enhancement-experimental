@@ -14,11 +14,11 @@ description: >-
 
 ## Repo documentation
 
-- **English only** for `README.md`, `docs/`, and `work/*/RESULTS.md`.
+- **English only** for `README.md` and `work/*/RESULTS.md`.
 - **Generic goal** in README — plates, faces, vehicles. No private case names or incident-specific narrative.
 - **Surgical edits:** change only the lines/sections that need updating (one table row, one command, one verdict). Do **not** rewrite the whole README.
 - **Grow downward:** append new bakeoff results or tools; avoid restructuring unrelated sections.
-- **README images:** `![caption](docs/bakeoff/...)` with files committed under `docs/`. Never swap images for URL-only text. Raw URL list: `docs/bakeoff/cut2/image_urls.md`. No emojis — text or shields.io badges for icons.
+- **README images:** `![caption](work/bakeoff/...)` with files committed under `work/bakeoff/`. Never swap images for URL-only text. Raw URL list: `work/bakeoff/cut2/image_urls.md`. No emojis — text or shields.io badges for icons.
 - After bakeoff: `python scripts/build_bakeoff_docs.py` then update only the image blocks in README.
 - See [README.md](../../../README.md) § “Maintaining this README”.
 
@@ -33,10 +33,11 @@ Upstream: [paper](https://arxiv.org/abs/2107.10833), [repo](https://github.com/x
 | `tools/realesgan/models/` | ncnn `.bin` / `.param` |
 | `tools/upscayl/` + `tools/upscayl-ncnn/` | Upscayl models + CLI (bakeoff) |
 | `Original/` | Source — **never re-encode / rewrite** |
-| `work/cut2-bakeoff/src/` | Extracted bakeoff frames |
+| `work/cut2-bakeoff/src/` | Extracted bakeoff frames (indoor face) |
+| `work/cut-motor-2308-bakeoff/src/` | Motorcycle ROI at stall — `cut.mkv` **23:17.33–23:18** (`scripts/extract_roi_bakeoff.py`; 3 frames) |
 | `work/cut2-bakeoff/outputs/` | One folder per method (numbered) |
 | `work/cut2-bakeoff/RESULTS.md` | Winner + ranking |
-| `docs/bakeoff/cut2/` | README comparison images (committed) |
+| `work/bakeoff/cut2/` | README comparison images (committed) |
 | `Restored/` | Final videos (gitignored) |
 
 ## Models in `tools/realesgan` — pick for CCTV

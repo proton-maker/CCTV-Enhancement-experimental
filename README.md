@@ -51,7 +51,7 @@ Rebuild comparison images: `python scripts/build_bakeoff_docs.py`
 
 ### Face / upper-body crop
 
-![Face crop comparison — frame 007](docs/bakeoff/cut2/face_comparison_frame007.png)
+![Face crop comparison — frame 007](work/bakeoff/cut2/face_comparison_frame007.png)
 
 | Run | Verdict | Main issue |
 |-----|---------|------------|
@@ -69,17 +69,17 @@ Rebuild comparison images: `python scripts/build_bakeoff_docs.py`
 
 ### Full frame (downscaled strip)
 
-![Full frame comparison — frame 007](docs/bakeoff/cut2/fullframe_comparison_frame007.png)
+![Full frame comparison — frame 007](work/bakeoff/cut2/fullframe_comparison_frame007.png)
 
 ### Per-crop (Real-ESRGAN)
 
 | Original | x4plus x2 | x4plus x4 |
 |----------|-----------|-----------|
-| ![src](docs/bakeoff/cut2/face_src.png) | ![x4plus s2](docs/bakeoff/cut2/face_x4plus_s2.png) | ![x4plus s4](docs/bakeoff/cut2/face_x4plus_s4.png) |
+| ![src](work/bakeoff/cut2/face_src.png) | ![x4plus s2](work/bakeoff/cut2/face_x4plus_s2.png) | ![x4plus s4](work/bakeoff/cut2/face_x4plus_s4.png) |
 
 | anime x2 | animevideov3 x2 |
 |----------|-----------------|
-| ![anime](docs/bakeoff/cut2/face_anime_s2.png) | ![animevid](docs/bakeoff/cut2/face_animevid_s2.png) |
+| ![anime](work/bakeoff/cut2/face_anime_s2.png) | ![animevid](work/bakeoff/cut2/face_animevid_s2.png) |
 
 ## What we tried (summary)
 
@@ -107,13 +107,14 @@ Rebuild comparison images: `python scripts/build_bakeoff_docs.py`
 
 | `Original/packs/` | ZIP archives for files >100MB |
 
-| `docs/bakeoff/cut2/` | Comparison images for README |
+| `work/bakeoff/cut2/` | Comparison images for README |
 
 | `scripts/` | `pack_original.py`, `restore_cctv.py`, `bakeoff_*`, `build_bakeoff_docs.py` |
 
 | `tools/README.md` | How to install gitignored tools |
 
-| `work/cut2-bakeoff/` | Local bakeoff (`src/`, `outputs/`, `RESULTS.md`) — gitignored |
+| `work/cut2-bakeoff/` | Bakeoff data (`src/`, `outputs/`, `RESULTS.md`) — committed |
+| `work/cut-motor-2308-bakeoff/` | Motorcycle ROI bakeoff (`cut.mkv` 23:17–23:18) — committed |
 
 | `.cursor/skills/` | Agent workflows (VRT, RVRT, Real-ESRGAN) |
 
@@ -171,11 +172,13 @@ python scripts/bakeoff_upscayl.py --skip-upscale   # rebuild comparison PNGs onl
 
 ```
 
-## work/ layout (local)
+## work/ layout (committed bakeoff data)
 
 ```
 
 work/
+
+├── bakeoff/cut2/         # README comparison images
 
 ├── cut2-bakeoff/
 
@@ -187,7 +190,9 @@ work/
 
 │   └── RESULTS.md        # winner + ranking
 
-└── archive/              # older VRT/Colab/hybrid runs
+├── cut-motor-2308-bakeoff/  # motorcycle ROI (stall phase)
+
+└── archive/              # older runs — gitignored (too large)
 
 ```
 
@@ -205,7 +210,7 @@ Focus on **readable plates/faces**, not “looks HD”.
 ### Contributing
 
 1. Open an **issue** with clip, model, settings, **crop comparisons**
-2. **PRs** for scripts, `docs/bakeoff/`, eval harnesses
+2. **PRs** for scripts, `work/bakeoff/`, eval harnesses
 3. Say what became readable that was not before
 
 ## Git policy
@@ -216,11 +221,13 @@ Focus on **readable plates/faces**, not “looks HD”.
 
 | `Original/ch07.mp4` | gitignored — commit `Original/packs/ch07.mp4/*` |
 
-| `docs/bakeoff/` | committed |
+| `work/` | committed (bakeoff data + comparison images) |
+
+| `work/archive/`, `work/_tmp*/` | gitignored (bulky / temp) |
 
 | `tools/` | gitignored (except `tools/README.md`) |
 
-| `work/`, `Restored/` | gitignored |
+| `Restored/` | gitignored |
 
 ## Licenses
 
@@ -268,7 +275,7 @@ When updating:
 - **Append** new results as new rows or a dated subsection; avoid reshuffling unrelated sections.
 - Keep language **generic** (plates, faces, vehicles) — no private case names or one-off incident details in the public README.
 - User-facing docs stay **English only** (see `.cursor/skills/`).
-- **README images:** use committed relative paths, e.g. `![caption](docs/bakeoff/cut2/file.png)`. Do not replace images with plain URLs or caption-only text. Optional raw URLs live in `docs/bakeoff/cut2/image_urls.md`. No emojis — text labels or [shields.io](https://shields.io) badges if you need icons.
+- **README images:** use committed relative paths, e.g. `![caption](work/bakeoff/cut2/file.png)`. Do not replace images with plain URLs or caption-only text. Optional raw URLs live in `work/bakeoff/cut2/image_urls.md`. No emojis — text labels or [shields.io](https://shields.io) badges if you need icons.
 
 ---
 

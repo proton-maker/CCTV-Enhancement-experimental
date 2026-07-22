@@ -6,11 +6,15 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 
-# Work + restored outputs (regenerable)
-work/
+# Restored outputs (regenerable)
 Restored/
 *.orig.mp4
 *.orig.mkv
+
+# work/ is committed bakeoff data — exclude bulky / temp only
+work/archive/
+work/_tmp*/
+work/**/_strip/
 
 # Raw Originals that exceed GitHub ~100MB — use Original/packs/ (ZIP_STORED split)
 Original/ch07.mp4

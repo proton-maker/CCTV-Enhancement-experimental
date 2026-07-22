@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build comparison PNGs for docs/bakeoff/cut2 from work/cut2-bakeoff outputs."""
+"""Build comparison PNGs for work/bakeoff/cut2 from work/cut2-bakeoff outputs."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ BAKEOFF = ROOT / "work" / "cut2-bakeoff"
 SRC = BAKEOFF / "src"
 OUTPUTS = BAKEOFF / "outputs"
 CROPS = BAKEOFF / "crops"
-DOCS = ROOT / "docs" / "bakeoff" / "cut2"
+DOCS = ROOT / "work" / "bakeoff" / "cut2"
 REPO = "proton-maker/CCTV-Enhancement-experimental"
 BRANCH = "main"
 
@@ -148,7 +148,7 @@ def main() -> int:
             [
                 "# Bakeoff image URLs (for README)",
                 "",
-                f"Base: `https://raw.githubusercontent.com/{REPO}/{BRANCH}/docs/bakeoff/cut2/`",
+                f"Base: `https://raw.githubusercontent.com/{REPO}/{BRANCH}/work/bakeoff/cut2/`",
                 "",
                 f"- face grid: {raw_url(DOCS / 'face_comparison_frame007.png')}",
                 f"- full frame strip: {raw_url(DOCS / 'fullframe_comparison_frame007.png')}",

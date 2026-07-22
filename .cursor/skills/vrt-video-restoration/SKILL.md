@@ -14,11 +14,11 @@ Official PyTorch workflow for [VRT: A Video Restoration Transformer](https://arx
 
 ## Repo documentation
 
-- **English only** for `README.md`, `docs/`, and `work/*/RESULTS.md`.
+- **English only** for `README.md` and `work/*/RESULTS.md`.
 - **Generic goal** in README — plates, faces, vehicles. No private case names or incident-specific narrative.
 - **Surgical edits:** change only the lines/sections that need updating (one table row, one command, one verdict). Do **not** rewrite the whole README.
 - **Grow downward:** append new bakeoff results or tools; avoid restructuring unrelated sections.
-- **README images:** `![caption](docs/bakeoff/...)` with files committed under `docs/`. Never swap images for URL-only text. Raw URL list: `docs/bakeoff/cut2/image_urls.md`. No emojis — text or shields.io badges for icons.
+- **README images:** `![caption](work/bakeoff/...)` with files committed under `work/bakeoff/`. Never swap images for URL-only text. Raw URL list: `work/bakeoff/cut2/image_urls.md`. No emojis — text or shields.io badges for icons.
 - See [README.md](../../../README.md) § “Maintaining this README”.
 
 **Local only** — Colab tooling was removed from this project. For face/plate **upscale**, use [realesrgan](../realesrgan/SKILL.md). For a **lighter** temporal model than VRT, try [rvrt-video-restoration](../rvrt-video-restoration/SKILL.md).
