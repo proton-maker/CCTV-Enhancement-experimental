@@ -12,12 +12,20 @@ description: >-
 Official PyTorch workflow for [VRT: A Video Restoration Transformer](https://arxiv.org/abs/2201.12288)
 ([repo](https://github.com/JingyunLiang/VRT)). Prefer this skill over inventing a custom restoration pipeline.
 
-**Local only** — Colab tooling was removed from this project. For face/plate **upscale**, use [realesrgan](../realesrgan/SKILL.md).
+## Repo documentation
+
+- **English only** for `README.md`, `docs/`, and `work/*/RESULTS.md`.
+- **Generic goal** in README — plates, faces, vehicles. No private case names or incident-specific narrative.
+- **Surgical edits:** change only the lines/sections that need updating (one table row, one command, one verdict). Do **not** rewrite the whole README.
+- **Grow downward:** append new bakeoff results or tools; avoid restructuring unrelated sections.
+- See [README.md](../../../README.md) § “Maintaining this README”.
+
+**Local only** — Colab tooling was removed from this project. For face/plate **upscale**, use [realesrgan](../realesrgan/SKILL.md). For a **lighter** temporal model than VRT, try [rvrt-video-restoration](../rvrt-video-restoration/SKILL.md).
 
 ## Requirements
 
 - Python 3.8+ (3.10–3.12 preferred), PyTorch >= 1.9 with CUDA
-- Deps: `tools/VRT/requirements.txt` **plus** `matplotlib`
+- Deps: clone `tools/VRT` locally — see [`tools/README.md`](../../../tools/README.md) (`tools/` is gitignored)
 - FFmpeg (frame extract / remux); WinGet: `%LOCALAPPDATA%\Microsoft\WinGet\Links\ffmpeg.exe`
 - GPU VRAM: RTX 3050 4GB needs small `--tile` and `--max-side 640|960`; OOM → reduce tile further
 
@@ -27,10 +35,12 @@ Official PyTorch workflow for [VRT: A Video Restoration Transformer](https://arx
 
 | Path | Role |
 |------|------|
-| `tools/VRT/` | Cloned official repo + `model_zoo/` |
+| `tools/VRT/` | Cloned locally (gitignored) — see `tools/README.md` |
 | `Original/` | Source CCTV — **never re-encode / resize / rewrite** |
-| `Original/packs/` | ZIP_STORED split archives for GitHub (≤95 MiB parts) |
-| `Restored/` | Output videos |
+| `Original/packs/` | ZIP_STORED split archives for GitHub (≤95 MiB parts) |
+| `Restored/` | Output videos (gitignored) |
+| `work/cut2-bakeoff/` | Frame tests: `src/`, `outputs/`, `RESULTS.md` |
+| `work/archive/` | Older VRT/Colab/hybrid runs |
 | `scripts/pack_original.py` | Pack/unpack Originals without tampering |
 | `scripts/restore_cctv.py` | Local forensic presets wrapper |
 | `.cursor/skills/vrt-video-restoration/scripts/restore_video.py` | End-to-end: video → frames → VRT → video |

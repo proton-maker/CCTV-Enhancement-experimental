@@ -10,21 +10,32 @@ description: >-
 
 # Real-ESRGAN (CCTV)
 
-**Goal:** make CCTV footage clearer — especially **faces** and **license plates** — using local Real-ESRGAN. Prefer this skill for upscale/clarity; use [vrt-video-restoration](../vrt-video-restoration/SKILL.md) for denoise/deblur without upscaling.
+**Goal:** make CCTV footage clearer — especially **faces** and **license plates** — using local Real-ESRGAN. Prefer this skill for upscale/clarity; use [vrt-video-restoration](../vrt-video-restoration/SKILL.md) or [rvrt-video-restoration](../rvrt-video-restoration/SKILL.md) for denoise/deblur without upscaling.
+
+## Repo documentation
+
+- **English only** for `README.md`, `docs/`, and `work/*/RESULTS.md`.
+- **Generic goal** in README — plates, faces, vehicles. No private case names or incident-specific narrative.
+- **Surgical edits:** change only the lines/sections that need updating (one table row, one command, one verdict). Do **not** rewrite the whole README.
+- **Grow downward:** append new bakeoff results or tools; avoid restructuring unrelated sections.
+- See [README.md](../../../README.md) § “Maintaining this README”.
 
 Upstream: [paper](https://arxiv.org/abs/2107.10833), [repo](https://github.com/xinntao/Real-ESRGAN).  
-**Runtime in this repo:** portable ncnn at `tools/realesgan/` — no CUDA, no PyTorch, **no Colab**.
+**Runtime:** portable ncnn in `tools/realesgan/` (gitignored — see [`tools/README.md`](../../../tools/README.md)). For extra models, use [Upscayl](https://github.com/upscayl/upscayl) via `scripts/bakeoff_upscayl.py`.
 
 ## Project layout
 
 | Path | Role |
 |------|------|
-| `tools/realesgan/realesrgan-ncnn-vulkan.exe` | Main binary (preferred) |
+| `tools/realesgan/realesrgan-ncnn-vulkan.exe` | Main binary (install locally) |
 | `tools/realesgan/models/` | ncnn `.bin` / `.param` |
-| `tools/Real-ESRGAN/` | Optional Python clone (full features) |
+| `tools/upscayl/` + `tools/upscayl-ncnn/` | Upscayl models + CLI (bakeoff) |
 | `Original/` | Source — **never re-encode / rewrite** |
-| `work/realesrgan/` | Extracted frames + bakeoff outputs |
-| `Restored/` | Final images/videos |
+| `work/cut2-bakeoff/src/` | Extracted bakeoff frames |
+| `work/cut2-bakeoff/outputs/` | One folder per method (numbered) |
+| `work/cut2-bakeoff/RESULTS.md` | Winner + ranking |
+| `docs/bakeoff/cut2/` | README comparison images (committed) |
+| `Restored/` | Final videos (gitignored) |
 
 ## Models in `tools/realesgan` — pick for CCTV
 
@@ -53,26 +64,19 @@ Never run full-video Real-ESRGAN until the user has compared a few frames. Alway
 $FFMPEG = "$env:LOCALAPPDATA\Microsoft\WinGet\Links\ffmpeg.exe"
 $EXE = "tools\realesgan\realesrgan-ncnn-vulkan.exe"
 $IN = "Original\CUT\cut2.mkv"
-$WORK = "work\realesrgan\bakeoff_cut2"
-New-Item -ItemType Directory -Force -Path "$WORK\src","$WORK\x4plus_s2","$WORK\x4plus_s4" | Out-Null
+$WORK = "work\cut2-bakeoff"
+New-Item -ItemType Directory -Force -Path "$WORK\src","$WORK\outputs\01-realesrgan-x4plus-s2","$WORK\outputs\02-realesrgan-x4plus-s4" | Out-Null
 
-# ~8 evenly spaced frames (fast)
+# ~8 evenly spaced frames
 & $FFMPEG -y -i $IN -vf "select=not(mod(n\,30))" -vsync vfr -q:v 2 "$WORK\src\frame_%03d.png"
 
-# Candidates — realesrgan-x4plus only for CCTV (anime models skipped)
-# -g 1 = NVIDIA when GPU 0 is Intel iGPU (check with -v)
-& $EXE -i "$WORK\src" -o "$WORK\x4plus_s2" -n realesrgan-x4plus -s 2 -g 1 -f png -v
-& $EXE -i "$WORK\src" -o "$WORK\x4plus_s4" -n realesrgan-x4plus -s 4 -g 1 -f png -v
+& $EXE -i "$WORK\src" -o "$WORK\outputs\01-realesrgan-x4plus-s2" -n realesrgan-x4plus -s 2 -g 1 -f png -t 128 -v
+& $EXE -i "$WORK\src" -o "$WORK\outputs\02-realesrgan-x4plus-s4" -n realesrgan-x4plus -s 4 -g 1 -f png -t 128 -v
 ```
 
-Optional extra candidates (if user wants):
+Upscayl candidates: `python scripts/bakeoff_upscayl.py` → `outputs/05-upscayl-ultrasharp-s2` etc.
 
-```powershell
-& $EXE -i "$WORK\src" -o "$WORK\anime_s2" -n realesrgan-x4plus-anime -s 2 -g 1 -f png
-& $EXE -i "$WORK\src" -o "$WORK\animevid_s2" -n realesr-animevideov3 -s 2 -g 1 -f png
-```
-
-Compare: `work/realesrgan/bakeoff_*/src` vs each output folder. Prefer the run where **plate characters** and **facial landmarks** are most readable without plastic artifacts.
+Compare: `work/cut2-bakeoff/src` vs each folder under `outputs/`. Update `work/cut2-bakeoff/RESULTS.md` with the winner.
 
 ### After winner chosen — full video
 
