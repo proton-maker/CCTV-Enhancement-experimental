@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import shutil
+import sys
 from pathlib import Path
 
 try:
@@ -13,10 +14,16 @@ except ImportError:
     raise SystemExit("pip install pillow opencv-python")
 
 ROOT = Path(__file__).resolve().parents[1]
-BAKEOFF = ROOT / "work" / "cut2-bakeoff"
-SRC = BAKEOFF / "src"
+sys.path.insert(0, str(ROOT / "scripts"))
+from work_lab import dataset_dir, labs_for, list_labs
+
+DEFAULT_DATASET = "cut2"
+DEFAULT_LAB = "lab-001-historical-upscayl"
+
+BAKEOFF = labs_for(DEFAULT_DATASET) / DEFAULT_LAB
+SRC = dataset_dir(DEFAULT_DATASET) / "src"
 OUTPUTS = BAKEOFF / "outputs"
-CROPS = BAKEOFF / "crops"
+CROPS = dataset_dir(DEFAULT_DATASET) / "crops"
 DOCS = ROOT / "work" / "bakeoff" / "cut2"
 REPO = "proton-maker/CCTV-Enhancement-experimental"
 BRANCH = "main"

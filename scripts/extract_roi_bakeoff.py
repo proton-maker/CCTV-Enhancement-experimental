@@ -7,12 +7,15 @@ import argparse
 import json
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 import cv2
 import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts"))
+from focus_regions import default_focus_regions_meta, write_region_refs
 
 
 def parse_timestamp(value: str) -> float:
@@ -203,8 +206,12 @@ def extract_bakeoff(
         "dense_fps": dense_fps,
         "detected_total": len(detected),
         "frames": meta_frames,
+        "focus_regions": default_focus_regions_meta(),
     }
     (out_dir / "meta.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
+
+    write_region_refs(src_dir, crops_dir, meta)
+    print(f"Region refs -> {crops_dir}/plate_ref.png, face_ref.png, regions_overlay.png")
     return meta
 
 
@@ -218,7 +225,7 @@ def main() -> int:
     p = argparse.ArgumentParser(description="Extract ROI bakeoff frames from CCTV clip")
     p.add_argument("--video", type=Path, default=ROOT / "Original" / "CUT" / "cut.mkv")
     p.add_argument("--template", type=Path, help="Reference crop PNG (motorcycle ROI)")
-    p.add_argument("--out", type=Path, default=ROOT / "work" / "cut-motor-2308-bakeoff")
+    p.add_argument("--out", type=Path, default=ROOT / "work" / "datasets" / "cut-motor-2308")
     p.add_argument(
         "--start",
         default="23:17.33",
@@ -234,8 +241,8 @@ def main() -> int:
     template = args.template
     if template is None:
         candidates = [
-            ROOT / "work" / "cut-motor-2308-bakeoff" / "crops" / "motor_src.png",
-            ROOT / "work" / "cut-motor-2308-bakeoff" / "crops" / "motor_ref.png",
+            ROOT / "work" / "datasets" / "cut-motor-2308" / "crops" / "motor_src.png",
+            ROOT / "work" / "datasets" / "cut-motor-2308" / "crops" / "motor_ref.png",
         ]
         template = next((c for c in candidates if c.exists()), None)
         if template is None:

@@ -33,10 +33,10 @@ Upstream: [paper](https://arxiv.org/abs/2107.10833), [repo](https://github.com/x
 | `tools/realesgan/models/` | ncnn `.bin` / `.param` |
 | `tools/upscayl/` + `tools/upscayl-ncnn/` | Upscayl models + CLI (bakeoff) |
 | `Original/` | Source — **never re-encode / rewrite** |
-| `work/cut2-bakeoff/src/` | Extracted bakeoff frames (indoor face) |
-| `work/cut-motor-2308-bakeoff/src/` | Motorcycle ROI at stall — `cut.mkv` **23:17.33–23:18** (`scripts/extract_roi_bakeoff.py`; 3 frames) |
-| `work/cut2-bakeoff/outputs/` | One folder per method (numbered) |
-| `work/cut2-bakeoff/RESULTS.md` | Winner + ranking |
+| `work/datasets/cut2/src/` | Extracted bakeoff frames (indoor face) |
+| `work/datasets/cut-motor-2308/src/` | Motorcycle ROI — `cut.mkv` **23:17.33–23:18** |
+| `work/labs/<dataset>/lab-NNN-*/outputs/` | Per-lab classified outputs (A/B/C/D/E) |
+| `work/labs/cut2/lab-001-historical-upscayl/` | Historical cut2 winner lab |
 | `work/bakeoff/cut2/` | README comparison images (committed) |
 | `Restored/` | Final videos (gitignored) |
 
@@ -51,6 +51,26 @@ Upstream: [paper](https://arxiv.org/abs/2107.10833), [repo](https://github.com/x
 | `realesr-general-x4v3` | No | Tiny + `-dn` (Python only) |
 
 **Default for this project:** `-n realesrgan-x4plus -s 2` (×2 is usually enough for plates/faces; ×4 often oversmoothes).
+
+## README focus goals (which SR path?)
+
+| Goal | When to use Real-ESRGAN | Stage in bakeoff |
+|------|-------------------------|------------------|
+| **plate** | After `B04-clahe-brighten`; on **plate-zoom** crop from `meta.json` | `chains/plate/03-C-sr-x3` |
+| **face** | After brighten; on **face-zoom** crop only | `chains/face/03-C-sr-x2` |
+| **motor** | On full ROI after brighten (+ optional Upscayl) | `chains/motor/04-C-sr-x2` |
+| **scene** | On `datasets/*/full/` 1080p frames | `chains/scene/02-C-sr-x2` |
+| **brighten** | **Not SR** — use `B04-clahe-brighten` first | Chain step 02-B |
+
+**Plate crop trap (cut-motor-2308):** plate is front fender `y 0.55–0.73`, NOT rear tire. Check `crops/plate_ref.png` before any lab.
+
+See [testing-lab](../testing-lab/SKILL.md) for chain layout and `outputs/final/`.
+
+**Small ROI warning (< ~1000px wide):** ncnn **×2 produces tile-mosaic grids** on motor/face crops. Use instead:
+- ncnn **×4** (`-s 4`) — softer but no grid, or
+- **PyTorch** Real-ESRGAN x2 via `scripts/bakeoff_hybrid.py` → `C12-pytorch-sr-x2` (uses CodeFormer weights path).
+
+Classified bakeoff (chains): `python scripts/bakeoff_hybrid.py --dataset cut-motor-2308 --new-lab "name" --mode chains`
 
 ## Mandatory: small-frame bakeoff first
 

@@ -14,7 +14,8 @@ Restored/
 # work/ is committed bakeoff data — exclude bulky / temp only
 work/archive/
 work/_tmp*/
-work/**/_strip/
+work/**/intermediate/
+work/**/rvrt_in/
 
 # Raw Originals that exceed GitHub ~100MB — use Original/packs/ (ZIP_STORED split)
 Original/ch07.mp4

@@ -1,0 +1,77 @@
+{
+  "created_utc": "2026-07-22T05:31:26Z",
+  "dataset": "cut-motor-2308",
+  "lab": "lab-002-goal-plate-face-motor-scene",
+  "label": "goal-plate-face-motor-scene",
+  "updated_utc": "2026-07-22T05:33:15Z",
+  "last_run": {
+    "dataset": "cut-motor-2308",
+    "lab": "lab-002-goal-plate-face-motor-scene",
+    "stages": {
+      "A00-baseline-src": {
+        "status": "ok",
+        "frames": 3
+      },
+      "B01-rvrt-deblur": {
+        "status": "failed",
+        "error": "Command '['C:\\\\Users\\\\kenwi\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python313\\\\python.exe', 'C:\\\\Users\\\\kenwi\\\\Documents\\\\GitHub\\\\CCTV\\\\scripts\\\\bakeoff_rvrt.py', '--dataset', 'cut-motor-2308', '--lab', 'lab-002-goal-plate-face-motor-scene', '--task', 'deblur', '--out-subdir', 'B01-rvrt-deblur']' returned non-zero exit status 1."
+      },
+      "B02-rvrt-denoise": {
+        "status": "failed",
+        "error": "Command '['C:\\\\Users\\\\kenwi\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python313\\\\python.exe', 'C:\\\\Users\\\\kenwi\\\\Documents\\\\GitHub\\\\CCTV\\\\scripts\\\\bakeoff_rvrt.py', '--dataset', 'cut-motor-2308', '--lab', 'lab-002-goal-plate-face-motor-scene', '--task', 'denoise', '--out-subdir', 'B02-rvrt-denoise']' returned non-zero exit status 1."
+      },
+      "B03-opencv-denoise": {
+        "status": "ok"
+      },
+      "B04-clahe-brighten": {
+        "status": "ok"
+      },
+      "C11-realesrgan-s4": {
+        "status": "ok",
+        "scale": 4,
+        "backend": "ncnn"
+      },
+      "C12-pytorch-sr-x2": {
+        "status": "ok",
+        "scale": 2,
+        "backend": "pytorch"
+      },
+      "C13-plate-pytorch-sr-x3": {
+        "status": "ok",
+        "scale": 3,
+        "focus": "plate"
+      },
+      "C14-face-pytorch-sr-x2": {
+        "status": "ok",
+        "scale": 2,
+        "focus": "face"
+      },
+      "C15-scene-pytorch-sr-x2": {
+        "status": "ok",
+        "scale": 2,
+        "focus": "scene"
+      },
+      "D20-rvrt-then-sr": {
+        "status": "skipped",
+        "reason": "RVRT output missing"
+      },
+      "D22-pytorch-sr-codeformer": {
+        "status": "ok",
+        "faces_restored": 0,
+        "face_files": []
+      },
+      "E30-codeformer-facezoom": {
+        "status": "ok",
+        "faces_restored": 0,
+        "face_files": []
+      }
+    }
+  },
+  "goals": [
+    "plate",
+    "face",
+    "motor",
+    "scene",
+    "brighten"
+  ]
+}

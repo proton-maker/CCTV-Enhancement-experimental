@@ -83,6 +83,107 @@ Rebuild comparison images: `python scripts/build_bakeoff_docs.py`
 |----------|-----------------|
 | ![anime](work/bakeoff/cut2/face_anime_s2.png) | ![animevid](work/bakeoff/cut2/face_animevid_s2.png) |
 
+## Bakeoff results (`cut-motor-2308` — motorcycle stall, `frame_002`)
+
+Second test clip: red scooter + rider at a food stall (`Original/CUT/cut.mkv`, **23:17.33–23:18**).  
+Dataset: `work/datasets/cut-motor-2308/` (3 ROI frames, ×2 LANCZOS zoom).  
+Lab: `work/labs/cut-motor-2308/lab-002-goal-plate-face-motor-scene/` — full notes in `RESULTS.md` and `WINNERS.md` there.
+
+Reproduce (chains mode, recommended):
+
+```powershell
+python scripts/bakeoff_hybrid.py --dataset cut-motor-2308 --new-lab "chains-v3" --mode chains --goals plate,face,motor,scene,brighten
+```
+
+Explore all tools in parallel (old layout): `--mode explore` → `outputs/explore/`.
+
+### Problem on this clip
+
+| Issue | Why it blocks identification |
+|-------|------------------------------|
+| Night / uneven lighting | Rider and bike nearly black in raw ROI |
+| Motion blur + HEVC compression | Plate is a white smear, not characters |
+| Tiny face in ROI | ~40px tall even after ×2 extract — detectors fail |
+| Wrong plate crop (lab-002 bug) | Crop targeted **rear tire** instead of front plate below headlight |
+
+Full scene (1080p) vs zoomed ROI:
+
+| Full frame (`23:17.67`) | ROI baseline (`frame_002`) |
+|-------------------------|----------------------------|
+| ![full](work/bakeoff/cut-motor-2308/motor_full_frame002.png) | ![src](work/bakeoff/cut-motor-2308/motor_src_frame002.png) |
+
+Plate crop mistake (lab-002 — fixed in `scripts/focus_regions.py` + `meta.json`):
+
+![Wrong plate crop hit rear tire](work/bakeoff/cut-motor-2308/plate_wrong_crop_tire.png)
+
+*Correct region: front fender below headlight (`y 0.55–0.73` in ROI). Verify `crops/plate_ref.png` before any plate chain.*
+
+### Combined multi-tool run (lab-002, all stages)
+
+One lab run tested **brighten → denoise → upscale → hybrid → CodeFormer** on the same ROI (`frame_002`). Categories: **A** baseline, **B** temporal/brighten, **C** upscale, **D** hybrid chains, **E** face generative.
+
+![All tools combined — frame 002](work/bakeoff/cut-motor-2308/all_tools_frame002.png)
+
+| Cat | Stage | Verdict (`frame_002`) |
+|-----|-------|------------------------|
+| **A** | Baseline ROI | Dark, noisy; plate unreadable |
+| **B** | `B04-clahe-brighten` | **Best lighting lift** — rider + bike visible |
+| **B** | `B03-opencv-denoise` | Softer; no ID gain |
+| **B** | RVRT deblur/denoise | **Failed** — MSVC `cl` not in PATH |
+| **C** | `C12-pytorch-sr-x2` | **Best motor sharpness** — fairing edges clearer |
+| **C** | `C11-realesrgan-s4` (ncnn ×4) | OK but softer than PyTorch SR |
+| **C** | `C13-plate-sr-x3` | **Failed** — wrong crop (tire) |
+| **C** | `C14-face-sr-x2` | Marginal; face still blurry |
+| **C** | `C15-scene-sr-x2` | Marginal stall context on full 1080p |
+| **D** | `D22-sr-codeformer` | 0 faces detected |
+| **E** | `E30-codeformer-facezoom` | 0 faces detected |
+
+**Overall:** README goal **not achieved** — no readable plate characters or face features. Best forensic-safe combo: **`B04` brighten → `C12` PyTorch SR** on motor ROI.
+
+### Per-focus comparisons (`frame_002`)
+
+**Brighten** — `B04` wins; denoise alone too soft:
+
+![Brighten focus](work/bakeoff/cut-motor-2308/focus_brighten_frame002.png)
+
+**Motor** — `C12` PyTorch SR ×2 sharpest fairing; use after `B04`:
+
+![Motor focus](work/bakeoff/cut-motor-2308/focus_motor_frame002.png)
+
+**Plate** — no winner; crop was wrong (tire). Re-test after `focus_regions` fix:
+
+![Plate focus](work/bakeoff/cut-motor-2308/focus_plate_frame002.png)
+
+**Face** — `B04` best; CodeFormer 0 detections (investigative only, not forensic):
+
+![Face focus](work/bakeoff/cut-motor-2308/focus_face_frame002.png)
+
+**Scene** — full-frame SR (`C15`) slight context gain:
+
+![Scene focus](work/bakeoff/cut-motor-2308/focus_scene_frame002.png)
+
+### How to combine tools (chains — default from lab-003+)
+
+Do **not** upscale before brighten on dark CCTV. Run **one linear chain per goal**; final PNG per goal in `outputs/final/`.
+
+```text
+plate:  A crop plate (meta.json) → B CLAHE brighten → C PyTorch SR ×3 → final/
+face:   A crop face (top of ROI) → B CLAHE → C PyTorch SR ×2 → D CodeFormer (optional) → final/
+motor:  A baseline ROI → B CLAHE → Upscayl Ultrasharp ×2 (optional) → C PyTorch SR ×2 → final/
+scene:  A full 1080p → C PyTorch SR ×2 → final/
+brighten: A baseline → B CLAHE → final/
+```
+
+| Focus | Lab-002 winner | Recommended chain |
+|-------|----------------|-------------------|
+| brighten | `B04-clahe-brighten` | A → B |
+| motor | `C12-pytorch-sr-x2` (after B04) | A → B → (Upscayl) → C |
+| plate | *(none — wrong crop)* | A → B → C after `plate_ref.png` QA |
+| face | `B04` marginally | A → B → C; CodeFormer when detections work |
+| scene | `C15` marginally | A full → C |
+
+Best frame for this clip: **`frame_002`** (`23:17.67`) — rider most centered.
+
 ## What we tried (summary)
 
 | Approach | Tool | Result |
@@ -91,7 +192,9 @@ Rebuild comparison images: `python scripts/build_bakeoff_docs.py`
 
 | Denoise + deblur | VRT | Slightly cleaner; **no identification gain** |
 
-| Temporal deblur/denoise | RVRT | Similar to VRT; **no plate/face recovery** |
+| Temporal deblur/denoise | RVRT | Similar to VRT; **no plate/face recovery** (cut-motor: MSVC blocked RVRT) |
+
+| Multi-tool classified bakeoff | `bakeoff_hybrid.py` | cut-motor lab-002: B04+C12 best; plate crop bug; CodeFormer 0 faces |
 
 | Upscale ncnn | Real-ESRGAN | Tile mosaic on some frames; anime models wrong for CCTV |
 
@@ -157,14 +260,17 @@ Agent workflow skill: [`.cursor/skills/cctv-adaptive-pipeline/SKILL.md`](.cursor
 
 | `Original/packs/` | ZIP archives for files >100MB |
 
-| `work/bakeoff/cut2/` | Comparison images for README |
+| `work/bakeoff/cut2/` | Comparison images for README (indoor face clip) |
+| `work/bakeoff/cut-motor-2308/` | Comparison images for README (motorcycle stall clip) |
 
 | `scripts/` | `pack_original.py`, `restore_cctv.py`, `bakeoff_*`, `build_bakeoff_docs.py` |
 
 | `tools/README.md` | How to install gitignored tools |
 
-| `work/cut2-bakeoff/` | Bakeoff data (`src/`, `outputs/`, `RESULTS.md`) — committed |
-| `work/cut-motor-2308-bakeoff/` | Motorcycle ROI bakeoff (`cut.mkv` 23:17–23:18) — committed |
+| `work/datasets/` | Immutable source frames (`src/`, `crops/`, `meta.json`) |
+| `work/labs/` | Numbered test sessions (`lab-001-*`, `lab-002-*`, …) — never overwrite |
+| `work/labs/cut2/lab-001-historical-upscayl/` | cut2 bakeoff winner lab |
+| `work/labs/cut-motor-2308/lab-002-goal-plate-face-motor-scene/` | Motor ROI multi-focus bakeoff (plate/face/motor/scene/brighten) |
 
 | `.cursor/skills/` | Agent workflows (VRT, RVRT, Real-ESRGAN, CodeFormer, adaptive pipeline) |
 
@@ -212,6 +318,25 @@ tools\realesgan\realesrgan-ncnn-vulkan.exe -i work\cut2-bakeoff\src -o work\cut2
 
 ```
 
+### Classified / chains bakeoff (cut-motor-2308)
+
+```powershell
+# Linear A→B→C→D per goal + outputs/final/ (recommended)
+python scripts/bakeoff_hybrid.py --dataset cut-motor-2308 --new-lab "chains-v3" --mode chains
+
+# Full tool matrix (13+ folders under outputs/explore/)
+python scripts/bakeoff_hybrid.py --dataset cut-motor-2308 --new-lab "explore-all" --mode explore
+
+# Rebuild compare/ grids only
+python scripts/bakeoff_hybrid.py --dataset cut-motor-2308 --lab lab-002-goal-plate-face-motor-scene --compare-only
+```
+
+Extract ROI frames from video (stall phase):
+
+```powershell
+python scripts/extract_roi_bakeoff.py --start 23:17.33 --end 23:18 --out work/datasets/cut-motor-2308
+```
+
 ### Upscayl bakeoff
 
 ```bash
@@ -228,21 +353,17 @@ python scripts/bakeoff_upscayl.py --skip-upscale   # rebuild comparison PNGs onl
 
 work/
 
-├── bakeoff/cut2/         # README comparison images
+├── bakeoff/cut2/              # README images (indoor face)
 
-├── cut2-bakeoff/
+├── bakeoff/cut-motor-2308/    # README images (motor stall)
 
-│   ├── src/              # 8 source frames
+├── datasets/cut-motor-2308/   # Immutable src/, full/, crops/, meta.json
 
-│   ├── crops/
+├── labs/cut-motor-2308/       # lab-002-goal-plate-face-motor-scene/ (etc.)
 
-│   ├── outputs/          # 01-realesrgan-... through 10-rvrt-denoise-s10
+├── cut2-bakeoff/              # legacy pointer — see work/labs/cut2/
 
-│   └── RESULTS.md        # winner + ranking
-
-├── cut-motor-2308-bakeoff/  # motorcycle ROI (stall phase)
-
-└── archive/              # older runs — gitignored (too large)
+└── archive/                   # older runs — gitignored (too large)
 
 ```
 
@@ -319,4 +440,4 @@ Focus on **readable plates/faces**, not “looks HD”.
 
 ---
 
-**TL;DR:** Public CCTV enhancement experiment. **No winning pipeline yet.** Upscayl beats Real-ESRGAN ncnn on coherence; RVRT adds light temporal cleanup but **nothing clarifies identity**. Contributors welcome.
+**TL;DR:** Public CCTV enhancement experiment. **No winning pipeline yet** for plate/face OCR. cut2: Upscayl beats Real-ESRGAN ncnn on coherence. cut-motor-2308: **B04 brighten + C12 PyTorch SR** best for motor ROI; plate crop was wrong in lab-002 (fixed in scripts). Contributors welcome.

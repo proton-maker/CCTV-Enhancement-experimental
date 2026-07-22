@@ -40,7 +40,8 @@ Official PyTorch workflow for [VRT: A Video Restoration Transformer](https://arx
 | `Original/` | Source CCTV — **never re-encode / resize / rewrite** |
 | `Original/packs/` | ZIP_STORED split archives for GitHub (≤95 MiB parts) |
 | `Restored/` | Output videos (gitignored) |
-| `work/cut2-bakeoff/` | Frame tests: `src/`, `outputs/`, `RESULTS.md` |
+| `work/datasets/cut2/src/` | Frame tests input |
+| `work/labs/cut2/lab-*/` | Per-session RVRT / bakeoff outputs |
 | `work/archive/` | Older VRT/Colab/hybrid runs |
 | `scripts/pack_original.py` | Pack/unpack Originals without tampering |
 | `scripts/restore_cctv.py` | Local forensic presets wrapper |

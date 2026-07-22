@@ -1,0 +1,7 @@
+{
+  "created_utc": "2026-07-22T00:00:00Z",
+  "dataset": "cut-motor-2308",
+  "lab": "lab-001-classified-v2",
+  "label": "classified-v2",
+  "notes": "Migrated from work/cut-motor-2308-bakeoff. Winner: C12-pytorch-sr-x2."
+}

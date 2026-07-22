@@ -32,10 +32,9 @@ Upstream: [paper](https://arxiv.org/abs/2206.11253), [repo](https://github.com/s
 | `tools/CodeFormer/inference_codeformer.py` | Whole-image / video face restore |
 | `tools/CodeFormer/weights/CodeFormer/` | `codeformer.pth` |
 | `tools/CodeFormer/weights/facelib/` | RetinaFace / YOLOv5-face detectors |
-| `work/cut-motor-2308-bakeoff/src/` | Zoomed motorcycle+rider ROI (×2) — **best CodeFormer input** |
-| `work/cut-motor-2308-bakeoff/full/` | Full 1080p frames (face too small for detection) |
-| `work/cut2-bakeoff/src/` | Indoor face bakeoff frames |
-| `work/cut-motor-2308-bakeoff/outputs/` | Per-method results (`11-codeformer-*`, hybrid runs) |
+| `work/datasets/cut-motor-2308/src/` | Zoomed motorcycle+rider ROI (×2) |
+| `work/datasets/cut-motor-2308/full/` | Full 1080p frames |
+| `work/labs/cut-motor-2308/lab-*/outputs/` | Per-lab CodeFormer / hybrid runs |
 | `scripts/bakeoff_hybrid.py` | Multi-tool experimental bakeoff |
 
 ## Install (Windows, from repo root)
@@ -63,15 +62,16 @@ python scripts/download_pretrained_models.py CodeFormer
 | **0.5–0.7** | Balance quality vs fidelity | **Default bakeoff range** |
 | 0.8–1.0 | Stays closer to input blur | Safer for evidence review |
 
-## Mandatory: ROI zoom before CodeFormer
+## Mandatory: face crop from meta.json (not blind fractions)
 
 CCTV faces are tiny in full frames. **Always:**
 
-1. Crop/zoom the subject ROI first (`scripts/extract_roi_bakeoff.py` or manual crop).
-2. Optionally upscale ROI (×2) before face detection.
-3. Run CodeFormer on the ROI folder, not raw 1080p (unless using `--bg_upsampler realesrgan` on a tight crop).
+1. Verify `work/datasets/<name>/crops/face_ref.png` — rider head at **top** of ROI (`y 0.02–0.36`).
+2. Run face **chain**: crop → CLAHE (`B04`) → PyTorch SR (`C14`) → CodeFormer (`E30`) — see `scripts/bakeoff_hybrid.py --mode chains`.
+3. CodeFormer is step **04-D** in the face chain; if `restored_faces/` is empty, final = SR output only.
+4. Never run CodeFormer on full 1080p or on plate crop.
 
-`cut-motor-2308-bakeoff`: only `frame_003` triggered RetinaFace on `src/`; `frame_001`/`frame_002` had **0 faces** at all detector settings tested.
+`cut-motor-2308` lab-002: 0 faces on all frames even after SR — face still too small. After crop fix, retry chain with `w=0.9` and YOLOv5n.
 
 ## Quick inference
 
@@ -112,38 +112,28 @@ conda install -c conda-forge ffmpeg
 python inference_codeformer.py --bg_upsampler realesrgan --face_upsample -w 1.0 --input_path clip.mp4
 ```
 
-## Hybrid bakeoff (all tools)
+## Classified bakeoff (stage E only — never run alone)
 
-Run experimental comparisons on `cut-motor-2308-bakeoff` or `cut2-bakeoff`:
+CodeFormer is the **last** stage in a chain. Orchestrator: `scripts/bakeoff_hybrid.py` + [cctv-adaptive-pipeline](../cctv-adaptive-pipeline/SKILL.md).
 
 ```powershell
-python scripts/bakeoff_hybrid.py --bakeoff work/cut-motor-2308-bakeoff
-python scripts/bakeoff_hybrid.py --bakeoff work/cut2-bakeoff --skip-realesrgan
-python scripts/bakeoff_hybrid.py --compare-only --frame frame_003.png
+python scripts/bakeoff_hybrid.py --dataset cut-motor-2308 --new-lab "face-test"
 ```
 
-**Pipeline order (recommended experiments):**
+| Cat | Folder | This skill? |
+|-----|--------|-------------|
+| A–C | baseline, RVRT, Real-ESRGAN | No — other skills |
+| D | `D21-sr-then-codeformer` | Yes — after Real-ESRGAN ×2, **w=0.9** |
+| E | `E30-codeformer-facezoom` | Yes — face-zoom crop, **w=0.9** |
 
-| # | Pipeline | Tools |
-|---|----------|-------|
-| A | Native ROI | src only |
-| B | Temporal clean | RVRT denoise/deblur → ROI extract |
-| C | Upscale | Real-ESRGAN ncnn ×2 or Upscayl |
-| D | Face restore | CodeFormer on ROI (`w` 0.5 / 0.7) |
-| E | **Hybrid** | C then D, or CodeFormer `--bg_upsampler realesrgan` |
-| F | Full-frame | CodeFormer on `full/` (usually **0 faces**) |
+### Anti-patterns (v1 bakeoff mistakes)
 
-Compare under `outputs/` and update `RESULTS.md`. Rebuild README grids: `python scripts/build_bakeoff_docs.py` (cut2) or comparison from `bakeoff_hybrid.py`.
-
-## cut-motor verdict (local, ROI src)
-
-| Run | Faces detected | Verdict |
-|-----|----------------|---------|
-| `11-codeformer-w07-roi` | 1/3 (`frame_003`) | Face tile **hallucinated** identity — not usable for ID |
-| `14-codeformer-bg-up` | 1/3 | Background ×2 sharper; face still invented |
-| Full 1080p (`full/`) | 0/3 all detectors | **Unusable without ROI crop** |
-
-**Conclusion:** CodeFormer needs a larger face in frame. Combine ROI extraction + optional Real-ESRGAN upscale first. Even then, output is **generative** — pair with [realesrgan](../realesrgan/SKILL.md) for plates/texture and [rvrt](../rvrt-video-restoration/SKILL.md) for temporal noise.
+| Wrong | Right |
+|-------|-------|
+| `11-codeformer-w07-roi` on raw src | `D21-sr-then-codeformer` |
+| CodeFormer on `full/` 1080p | ROI `src/` or face-zoom |
+| w=0.5–0.7 | **w=0.9** (less hallucination) |
+| Empty `restored_faces/` = success | Passthrough failure — check face count |
 
 ## CLI reference
 
@@ -164,12 +154,11 @@ python inference_codeformer.py -i INPUT -o OUTPUT [options]
 
 ```
 CodeFormer CCTV:
-- [ ] ROI zoom/crop first (not full 1080p)
-- [ ] Warn user: generative face detail (not forensic-safe)
-- [ ] Bakeoff w=0.5 vs 0.7; try multiple detectors if 0 faces
-- [ ] Compare vs Real-ESRGAN / Upscayl / RVRT in hybrid bakeoff
+- [ ] Run via bakeoff_hybrid.py (not standalone on src)
+- [ ] ROI zoom + SR before face stage
+- [ ] Use w=0.9 on CCTV; check restored_faces/ count
+- [ ] Warn user: generative — not forensic-safe
 - [ ] Never write into Original/
-- [ ] Output under work/*/outputs/
 ```
 
 ## Related

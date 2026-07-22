@@ -1,0 +1,7 @@
+{
+  "created_utc": "2026-07-22T00:00:00Z",
+  "dataset": "cut2",
+  "lab": "lab-001-historical-upscayl",
+  "label": "historical-upscayl",
+  "notes": "Migrated from work/cut2-bakeoff. Winner: 05-upscayl-ultrasharp-s2."
+}

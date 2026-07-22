@@ -52,8 +52,8 @@ These call `vcvars64.bat`, set `CUDA_HOME`, then `python scripts/bakeoff_rvrt.py
 ## Bakeoff (cut2 frames)
 
 ```bash
-# After frames exist in work/cut2-bakeoff/src/
-python scripts/bakeoff_rvrt.py --task deblur
+# After frames exist in work/datasets/cut2/src/
+python scripts/bakeoff_rvrt.py --dataset cut2 --lab lab-001-historical-upscayl --task deblur
 python scripts/bakeoff_rvrt.py --task denoise
 python scripts/bakeoff_rvrt.py --task all
 

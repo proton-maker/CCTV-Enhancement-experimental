@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run RVRT on cut2-bakeoff src frames and copy results to outputs/."""
+"""Run RVRT on dataset src frames; write to work/labs/<dataset>/<lab>/outputs/."""
 
 from __future__ import annotations
 
@@ -10,43 +10,52 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-BAKEOFF = ROOT / "work" / "cut2-bakeoff"
-SRC = BAKEOFF / "src"
-OUTPUTS = BAKEOFF / "outputs"
+sys.path.insert(0, str(ROOT / "scripts"))
+from work_lab import dataset_src, labs_for, normalize_dataset, resolve_lab_root
+
 RVRT = ROOT / "tools" / "RVRT"
 
 TASKS = {
     "deblur": {
         "task": "005_RVRT_videodeblurring_GoPro_16frames",
-        "out": "09-rvrt-deblur-gopro",
+        "out": "B01-rvrt-deblur",
         "sigma": None,
     },
     "denoise": {
         "task": "006_RVRT_videodenoising_DAVIS_16frames",
-        "out": "10-rvrt-denoise-s10",
+        "out": "B02-rvrt-denoise",
         "sigma": 10,
     },
 }
 
 
-def prepare_input() -> Path:
-    parent = BAKEOFF / "rvrt_in"
+def prepare_input(dataset: str, lab_root: Path) -> Path:
+    src = dataset_src(dataset)
+    parent = lab_root / "rvrt_in"
     clip = parent / "clip"
     if clip.exists():
         shutil.rmtree(clip)
     clip.mkdir(parents=True)
-    for f in sorted(SRC.glob("*.png")):
+    for f in sorted(src.glob("*.png")):
         shutil.copy2(f, clip / f.name)
     return parent
 
 
-def run_rvrt(task_key: str, tile: list[int], overlap: list[int]) -> Path:
+def run_rvrt(
+    dataset: str,
+    lab_root: Path,
+    task_key: str,
+    tile: list[int],
+    overlap: list[int],
+    out_subdir: str | None = None,
+) -> Path:
     if not (RVRT / "main_test_rvrt.py").exists():
         raise SystemExit(f"Clone RVRT: git clone --depth 1 https://github.com/JingyunLiang/RVRT tools/RVRT")
 
     spec = TASKS[task_key]
-    inp = prepare_input()
-    out_dir = OUTPUTS / spec["out"]
+    inp = prepare_input(dataset, lab_root)
+    out_name = out_subdir or spec["out"]
+    out_dir = lab_root / "outputs" / out_name
     if out_dir.exists():
         shutil.rmtree(out_dir)
     out_dir.mkdir(parents=True)
@@ -87,22 +96,30 @@ def run_rvrt(task_key: str, tile: list[int], overlap: list[int]) -> Path:
 
 def main() -> int:
     p = argparse.ArgumentParser()
+    p.add_argument("--dataset", type=str, default="cut2")
+    p.add_argument("--lab", type=str, default=None)
+    p.add_argument("--new-lab", type=str, default=None)
+    p.add_argument("--bakeoff", type=Path, default=None, help="DEPRECATED legacy path")
+    p.add_argument("--out-subdir", type=str, default=None)
     p.add_argument(
         "--task",
         choices=list(TASKS.keys()) + ["all"],
         default="deblur",
-        help="deblur=GoPro (default for blurry CCTV), denoise=DAVIS sigma10",
     )
     p.add_argument("--tile", type=int, nargs=3, default=[8, 256, 256])
     p.add_argument("--tile-overlap", type=int, nargs=3, default=[2, 32, 32])
     args = p.parse_args()
 
-    if not SRC.exists():
-        raise SystemExit(f"Missing {SRC}")
+    dataset = normalize_dataset(args.dataset)
+    legacy = args.bakeoff.resolve() if args.bakeoff else None
+    _ds, lab_root = resolve_lab_root(dataset, lab=args.lab, new_lab=args.new_lab, legacy_bakeoff=legacy)
+
+    if not dataset_src(dataset).exists():
+        raise SystemExit(f"Missing {dataset_src(dataset)}")
 
     keys = list(TASKS.keys()) if args.task == "all" else [args.task]
     for k in keys:
-        run_rvrt(k, args.tile, args.tile_overlap)
+        run_rvrt(dataset, lab_root, k, args.tile, args.tile_overlap, args.out_subdir)
     return 0
 
 
