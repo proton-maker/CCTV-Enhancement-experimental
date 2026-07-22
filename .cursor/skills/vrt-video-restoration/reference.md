@@ -3,7 +3,8 @@
 Paper: [arxiv:2201.12288](https://arxiv.org/abs/2201.12288)  
 Repo: https://github.com/JingyunLiang/VRT  
 Models/results: https://github.com/JingyunLiang/VRT/releases  
-Colab: https://colab.research.google.com/gist/JingyunLiang/deb335792768ad9eb73854a8efca4fe0
+
+Local-only workflow in this project (Colab tooling removed).
 
 ## Capabilities (SOTA margins from paper)
 

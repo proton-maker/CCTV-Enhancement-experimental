@@ -12,11 +12,13 @@ description: >-
 Official PyTorch workflow for [VRT: A Video Restoration Transformer](https://arxiv.org/abs/2201.12288)
 ([repo](https://github.com/JingyunLiang/VRT)). Prefer this skill over inventing a custom restoration pipeline.
 
+**Local only** — Colab tooling was removed from this project. For face/plate **upscale**, use [realesrgan](../realesrgan/SKILL.md).
+
 ## Requirements
 
 - Python 3.8+ (3.10–3.12 preferred), PyTorch >= 1.9 with CUDA
 - Deps: `tools/VRT/requirements.txt` **plus** `matplotlib`
-- FFmpeg on PATH (frame extract / remux)
+- FFmpeg (frame extract / remux); WinGet: `%LOCALAPPDATA%\Microsoft\WinGet\Links\ffmpeg.exe`
 - GPU VRAM: RTX 3050 4GB needs small `--tile` and `--max-side 640|960`; OOM → reduce tile further
 
 **Local patch:** `tools/VRT/data/dataset_video_test.py` `SingleVideoRecurrentTestDataset` appends a noise-level map when `--sigma > 0` (needed for real CCTV denoising without GT). `main_test_vrt.py` uses CUDA AMP (fp16) for faster inference.
@@ -30,7 +32,8 @@ Official PyTorch workflow for [VRT: A Video Restoration Transformer](https://arx
 | `Original/packs/` | ZIP_STORED split archives for GitHub (≤95 MiB parts) |
 | `Restored/` | Output videos |
 | `scripts/pack_original.py` | Pack/unpack Originals without tampering |
-| `scripts/restore_video.py` | End-to-end: video → frames → VRT → video |
+| `scripts/restore_cctv.py` | Local forensic presets wrapper |
+| `.cursor/skills/vrt-video-restoration/scripts/restore_video.py` | End-to-end: video → frames → VRT → video |
 
 ## Original footage integrity (mandatory)
 
@@ -65,10 +68,10 @@ python scripts/pack_original.py --unpack Original/packs/ch07.mp4
 | **σ ≤ 10** for denoise | Higher σ = more smoothing / lost detail |
 | **Blend with original** 15–40% | `--blend-original` caps model invention |
 | **Blur → `forensic-blur` preset** | Light denoise (σ=10) then deblur, both blended |
-| **Native resolution on Colab** | `max-side 0` — no downscale/upscale |
-| **No face/body “enhancement”** | Out of scope for evidence |
+| **Smoke with `--max-frames` first** | Fast quality check before full run |
+| **No face/body “enhancement”** | Out of scope for evidence (use Real-ESRGAN skill only if user wants upscale) |
 
-### One command (prefers Colab GPU when logged in)
+### One command (local)
 
 ```powershell
 python scripts/restore_cctv.py --input Original/CUT/cut.mkv
@@ -80,12 +83,6 @@ Smoke test (24 frames):
 python scripts/restore_cctv.py --input Original/CUT/cut.mkv --max-frames 24
 ```
 
-Force local PC:
-
-```powershell
-python scripts/restore_cctv.py --input Original/CUT/cut.mkv --backend local
-```
-
 ### Presets
 
 | Preset | Use case | Pipeline |
@@ -94,8 +91,7 @@ python scripts/restore_cctv.py --input Original/CUT/cut.mkv --backend local
 | `forensic-denoise` | Grainy but sharp | σ=10 denoise only |
 | `preview` | Fast check | Deblur only, smaller tiles |
 
-Colab uses `tile 6 192 192`, chunks 32 frames, native 1080p (T4-safe).  
-Local 4GB uses `6 128 128`, `max-side 960`.
+Local 4GB uses `tile 6 128 128`, `max-side 960`.
 
 ## Task picker (manual overrides)
 
@@ -126,8 +122,9 @@ Copy and track:
 VRT restore:
 - [ ] Ensure tools/VRT + model weights exist
 - [ ] Inspect input (resolution, fps, duration)
+- [ ] Smoke `--max-frames` first
 - [ ] Pick task + sigma + tile
-- [ ] Run scripts/restore_video.py
+- [ ] Run scripts/restore_cctv.py or restore_video.py
 - [ ] Verify Restored/*.mkv plays and looks cleaner
 ```
 
@@ -183,30 +180,8 @@ VRT loads the full clip into memory. For long CCTV:
 
 See [reference.md](reference.md) for paper commands, datasets, and citation.
 
-## Google Colab GPU (from Cursor terminal)
-
-**Preferred for forensic blur** — T4 16GB. CLI session `cctv` ≠ tab browser "Welcome to Colab".
-
-| Lokasi | Isi |
-|--------|-----|
-| Colab `/content/input/` | Video upload dari PC |
-| Colab `/content/output/` | Hasil sementara di VM |
-| Colab `/content/work/` | Frame + `progress.txt` |
-| PC `Restored/` | Download otomatis setelah selesai |
-
-```powershell
-# Smoke (8 frame, max-side 960, heartbeat tiap 20s)
-python scripts/restore_cctv.py --input Original/CUT/cut.mkv --max-frames 8 --backend colab
-
-# Full forensic native resolution (lama)
-python scripts/restore_cctv.py --input Original/CUT/cut.mkv --backend colab
-```
-
-- Wrapper: `tools/colab/colab_win.py` / `tools/colab/colab.ps1`
-- Docs + folder map: `tools/colab/README.md`
-- Pantau **terminal Cursor**, bukan Resources di Welcome notebook.
-
 ## Related
 
-- Lighter alternative: [RVRT](https://github.com/JingyunLiang/RVRT) (NeurIPS 2022) — better memory/runtime tradeoff
+- Image/video **upscale** (faces/plates): [realesrgan](../realesrgan/SKILL.md) — `tools/realesgan` ncnn-vulkan; small-frame bakeoff first
+- Lighter VRT alternative: [RVRT](https://github.com/JingyunLiang/RVRT) (NeurIPS 2022) — better memory/runtime tradeoff
 - Training lives in [KAIR](https://github.com/cszn/KAIR), not this repo

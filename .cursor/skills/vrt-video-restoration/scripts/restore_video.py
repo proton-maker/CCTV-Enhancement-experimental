@@ -6,10 +6,13 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
 import tempfile
+import threading
+import time
 from pathlib import Path
 
 import cv2
@@ -21,6 +24,110 @@ if str(_SKILL_DIR) not in sys.path:
     sys.path.insert(0, str(_SKILL_DIR))
 
 from forensic_presets import RestorePreset, detect_runtime_backend, get_preset  # noqa: E402
+
+FFMPEG_FRAME_RE = re.compile(r"frame=\s*(\d+)")
+PROGRESS_INTERVAL_S = 10.0
+
+
+def _format_eta(done: int, total: int | None, elapsed: float) -> str:
+    if not total or done <= 0 or elapsed <= 0:
+        return "ETA ?"
+    rate = done / elapsed
+    if rate <= 0:
+        return "ETA ?"
+    remain = max(0.0, (total - done) / rate)
+    return f"ETA {int(remain // 3600)}h{int((remain % 3600) // 60)}m"
+
+
+def _status_line(label: str, done: int, total: int | None, elapsed: float, extra: str = "") -> str:
+    pct = f" ({100.0 * done / total:.1f}%)" if total and total > 0 else ""
+    total_s = f"/{total:,}" if total else ""
+    fps = done / elapsed if elapsed > 0 else 0.0
+    eta = _format_eta(done, total, elapsed)
+    tail = f" | {extra}" if extra else ""
+    return (
+        f"[{label}] {done:,}{total_s}{pct} | {fps:.1f} fps | "
+        f"elapsed {int(elapsed // 60)}m{int(elapsed % 60)}s | {eta}{tail}"
+    )
+
+
+def _drain_stderr(proc: subprocess.Popen[str], stats: dict) -> None:
+    """Read ffmpeg stderr so the process cannot block on a full pipe."""
+    assert proc.stderr is not None
+    for line in proc.stderr:
+        m = FFMPEG_FRAME_RE.search(line)
+        if m:
+            stats["frame"] = int(m.group(1))
+
+
+def _run_ffmpeg_compact(
+    cmd: list[str],
+    label: str,
+    *,
+    total_frames: int | None = None,
+    count_dir: Path | None = None,
+) -> None:
+    """Run ffmpeg with compact progress (one line / 10s) instead of thousands of frame lines."""
+    run_cmd = [cmd[0], "-hide_banner", "-nostdin", *cmd[1:]]
+    print(f"Running ffmpeg ({label})...", flush=True)
+    stats: dict = {"frame": 0}
+    proc = subprocess.Popen(
+        run_cmd,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
+        text=True,
+        bufsize=1,
+    )
+    drain = threading.Thread(target=_drain_stderr, args=(proc, stats), daemon=True)
+    drain.start()
+    start = time.time()
+    last_print = 0.0
+    while proc.poll() is None:
+        done = len(list(count_dir.glob("*.png"))) if count_dir else stats.get("frame", 0)
+        elapsed = time.time() - start
+        if elapsed - last_print >= PROGRESS_INTERVAL_S:
+            extra = "" if done > 0 else "still working..."
+            print(_status_line(label, done, total_frames, elapsed, extra), flush=True)
+            last_print = elapsed
+        time.sleep(1.0)
+    drain.join(timeout=10)
+    rc = proc.wait()
+    done = len(list(count_dir.glob("*.png"))) if count_dir else stats.get("frame", 0)
+    print(_status_line(label, done, total_frames, time.time() - start, "done"), flush=True)
+    if rc != 0:
+        raise subprocess.CalledProcessError(rc, run_cmd)
+
+
+def _stream_subprocess_compact(proc: subprocess.Popen[str], label: str) -> None:
+    """Stream child stdout; skip ffmpeg frame spam; heartbeat on silence."""
+    assert proc.stdout is not None
+    important = re.compile(
+        r"(?i)downloading|testing|chunk|pass |error|traceback|oom|cuda|preset|extract|encode|done:",
+    )
+    start = time.time()
+    last_print = [time.time()]
+
+    def heartbeat() -> None:
+        while proc.poll() is None:
+            time.sleep(PROGRESS_INTERVAL_S)
+            if proc.poll() is not None:
+                break
+            elapsed = int(time.time() - start)
+            print(f"[{label}] ... still running ({elapsed}s)", flush=True)
+            last_print[0] = time.time()
+
+    hb = threading.Thread(target=heartbeat, daemon=True)
+    hb.start()
+    for line in proc.stdout:
+        text = line.rstrip("\n")
+        if text.startswith("frame="):
+            continue
+        if important.search(text) or (text and not text.startswith("  ")):
+            print(text, flush=True)
+            last_print[0] = time.time()
+    rc = proc.wait()
+    if rc != 0:
+        raise subprocess.CalledProcessError(rc, proc.args)  # type: ignore[arg-type]
 
 
 def find_ffmpeg() -> str:
@@ -97,12 +204,26 @@ def extract_frames(
     out_dir: Path,
     max_frames: int | None,
     max_side: int | None,
+    total_frames_hint: int | None = None,
+    fps: float = 0.0,
 ) -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
+    existing = len(list(out_dir.glob("*.png")))
+    if max_frames and existing >= max_frames:
+        print(f"Extract complete: {existing} frames (resume)", flush=True)
+        return existing
+
     pattern = str(out_dir / "%08d.png")
-    cmd = [ffmpeg, "-y", "-i", str(video)]
+    cmd = [ffmpeg, "-y"]
+    if existing > 0 and fps > 0:
+        start_t = existing / fps
+        print(f"Resume extract from frame {existing + 1} (t={start_t:.2f}s)", flush=True)
+        cmd += ["-ss", str(start_t)]
+    cmd += ["-i", str(video)]
     if max_frames:
-        cmd += ["-frames:v", str(max_frames)]
+        remaining = max_frames - existing
+        if remaining > 0:
+            cmd += ["-frames:v", str(remaining)]
     if max_side:
         cmd += [
             "-vf",
@@ -112,8 +233,13 @@ def extract_frames(
         cmd += ["-fps_mode", "passthrough"]
     else:
         cmd += ["-vsync", "0"]
+    if existing > 0:
+        cmd += ["-start_number", str(existing + 1)]
     cmd.append(pattern)
-    subprocess.check_call(cmd)
+    total = max_frames or total_frames_hint
+    if total and existing:
+        total = existing + (max_frames - existing if max_frames else (total_frames_hint or 0) - existing)
+    _run_ffmpeg_compact(cmd, "extract-frames", total_frames=total, count_dir=out_dir)
     return len(list(out_dir.glob("*.png")))
 
 
@@ -131,7 +257,7 @@ def encode_video(
     if audio_from and audio_from.exists():
         cmd += ["-i", str(audio_from), "-map", "0:v:0", "-map", "1:a?", "-c:a", "copy", "-shortest"]
     cmd += ["-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", str(crf), "-preset", "medium", str(output)]
-    subprocess.check_call(cmd)
+    _run_ffmpeg_compact(cmd, "encode-video", total_frames=len(list(frames_dir.glob("*.png"))))
 
 
 def blend_with_original(restored: Path, original: Path, keep_original: float) -> None:
@@ -176,7 +302,7 @@ def run_vrt_on_folder(
     ]
     if "denoising" in task:
         cmd += ["--sigma", str(sigma)]
-    # Stream VRT stdout (model download + per-clip lines) to Colab exec live.
+    # Stream VRT stdout (model download + per-clip lines) live.
     cmd = [sys.executable, "-u", *cmd[1:]]
     print("Running:", " ".join(cmd), flush=True)
     env = os.environ.copy()
@@ -191,12 +317,7 @@ def run_vrt_on_folder(
         text=True,
         bufsize=1,
     )
-    assert proc.stdout is not None
-    for line in proc.stdout:
-        print(line.rstrip("\n"), flush=True)
-    rc = proc.wait()
-    if rc != 0:
-        raise subprocess.CalledProcessError(rc, cmd)
+    _stream_subprocess_compact(proc, "vrt")
     return vrt_root / "results" / task
 
 
@@ -224,12 +345,21 @@ def chunked_restore(
     blend_original: float,
     out_dir: Path | None = None,
     blend_refs: list[Path] | None = None,
+    checkpoint: Path | None = None,
 ) -> list[Path]:
     """Restore frames in temporal chunks with optional overlap crossfade."""
     out_collect = out_dir or (work / "restored_all")
     out_collect.mkdir(parents=True, exist_ok=True)
-    restored: list[Path] = []
-    global_idx = 1
+    restored: list[Path] = sorted(out_collect.glob("[0-9]*.png"))
+    global_idx = len(restored) + 1
+    done_chunks: set[str] = set()
+    if checkpoint and checkpoint.exists():
+        try:
+            done_chunks = set(json.loads(checkpoint.read_text(encoding="utf-8")))
+            print(f"Resume chunks: {len(done_chunks)} already done", flush=True)
+        except json.JSONDecodeError:
+            pass
+
     n = len(all_frames)
     step = max(1, chunk_frames - chunk_overlap)
 
@@ -238,6 +368,9 @@ def chunked_restore(
         if start >= n:
             break
         chunk_id = f"chunk_{start:08d}_{end:08d}"
+        if chunk_id in done_chunks:
+            print(f"Skip {chunk_id} (checkpoint)", flush=True)
+            continue
         print(f"\n=== Chunk {chunk_id} ({end - start} frames, {start}/{n}) ===", flush=True)
 
         lq_parent = work / "chunks" / chunk_id / "lq"
@@ -288,6 +421,11 @@ def chunked_restore(
         except ImportError:
             pass
 
+        done_chunks.add(chunk_id)
+        if checkpoint:
+            checkpoint.parent.mkdir(parents=True, exist_ok=True)
+            checkpoint.write_text(json.dumps(sorted(done_chunks)), encoding="utf-8")
+
     return restored
 
 
@@ -322,7 +460,7 @@ def main() -> int:
     parser.add_argument("--input", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--preset", default=None, choices=["forensic-blur", "forensic-denoise", "preview"])
-    parser.add_argument("--backend", default="auto", choices=["auto", "local", "colab"])
+    parser.add_argument("--backend", default="local", choices=["auto", "local"])
     parser.add_argument("--task", default="008_VRT_videodenoising_DAVIS")
     parser.add_argument("--sigma", type=int, default=20)
     parser.add_argument("--tile", type=int, nargs=3, default=[6, 128, 128])
@@ -371,12 +509,37 @@ def main() -> int:
     frames_dir = work / "all_frames"
     try:
         max_side = args.max_side if args.max_side and args.max_side > 0 else None
-        if not any(frames_dir.glob("*.png")):
+        est_frames = args.max_frames
+        if est_frames is None and info["fps"] and info["duration"]:
+            est_frames = int(info["fps"] * info["duration"])
+        n_existing = len(list(frames_dir.glob("*.png")))
+        if n_existing == 0:
             print(f"Extracting frames -> {frames_dir} (max_side={max_side})", flush=True)
-            n = extract_frames(ffmpeg, args.input, frames_dir, args.max_frames, max_side)
+            if est_frames:
+                print(f"Estimated frames: {est_frames:,}", flush=True)
+            n = extract_frames(
+                ffmpeg,
+                args.input,
+                frames_dir,
+                args.max_frames,
+                max_side,
+                est_frames,
+                info["fps"] or 25.0,
+            )
         else:
-            n = len(list(frames_dir.glob("*.png")))
+            n = n_existing
             print(f"Reusing {n} extracted frames in {frames_dir}", flush=True)
+            if est_frames and n < est_frames:
+                print(f"Resume extract ({n}/{est_frames})...", flush=True)
+                n = extract_frames(
+                    ffmpeg,
+                    args.input,
+                    frames_dir,
+                    args.max_frames,
+                    max_side,
+                    est_frames,
+                    info["fps"] or 25.0,
+                )
         if n == 0:
             raise SystemExit("No frames extracted")
 
@@ -401,6 +564,7 @@ def main() -> int:
                 args.pass1_blend,
                 out_dir=pass1_dir,
                 blend_refs=all_frames,
+                checkpoint=work / "pass1_chunks.json",
             )
             source_frames = sorted(pass1_dir.glob("*.png"))
             print(f"Pass 1 done: {len(source_frames)} frames", flush=True)
@@ -420,6 +584,7 @@ def main() -> int:
             args.blend_original,
             out_dir=work / "restored_all",
             blend_refs=all_frames if args.two_pass else None,
+            checkpoint=work / "pass2_chunks.json",
         )
 
         print(f"Encoding {len(restored)} frames -> {args.output}", flush=True)

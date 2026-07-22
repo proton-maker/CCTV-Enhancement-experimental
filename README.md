@@ -15,9 +15,10 @@ If a file is over ~100 MB, pack it with **ZIP_STORED + split parts** (`scripts
 | `Original/packs/` | GitHub-safe ZIP_STORED split archives (≤95 MiB each part) |
 | `Restored/` | VRT outputs (gitignored) |
 | `scripts/pack_original.py` | Pack / unpack without altering sources |
-| `scripts/restore_cctv.py` | Restore entrypoint |
-| `.cursor/skills/vrt-video-restoration/` | Agent skill |
-| `colab/` | Colab GPU restore |
+| `scripts/restore_cctv.py` | Local VRT restore entrypoint |
+| `.cursor/skills/vrt-video-restoration/` | VRT agent skill (denoise/deblur) |
+| `.cursor/skills/realesrgan/` | Real-ESRGAN skill (faces/plates upscale) |
+| `tools/realesgan/` | Portable Real-ESRGAN ncnn-vulkan |
 | `tools/VRT/` | Official VRT clone (gitignored) |
 
 ## Requirements
@@ -57,7 +58,7 @@ python scripts/pack_original.py --unpack
 python scripts/restore_cctv.py --input Original/CUT/cut.mkv
 ```
 
-See `.cursor/skills/vrt-video-restoration/SKILL.md` and `tools/colab/README.md`.
+See `.cursor/skills/vrt-video-restoration/SKILL.md`. For face/plate upscale, see `.cursor/skills/realesrgan/SKILL.md` (small-frame bakeoff first).
 
 ## Citation (VRT)
 
